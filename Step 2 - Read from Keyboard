@@ -1,0 +1,222 @@
+Forth has the simplest reader. It reads "words" separated by spaces. So a line is read left to right 
+a word at a time and when its done it will ask for more input. 
+
+This is brilliant because a reader is easy to write. Its also terrible because you cannot read say a 
+list as that would require recursion. For the moment I will ignore this as its not relevant.
+
+I have also broken the first rule of forth which is all functions return data on the stack but after
+a lot of trial and error foud it easier to ignore. So the "reader" words will behave unforthish for now.
+
+The line you type is held in SRC and the pointer within the line is INP
+EOL checks for end of a line.
+TRAIL removes characters from the end of the line.
+SKIP AND SCAN will skip over characters and look for characters usually spaces.
+
+Finally PARSE and PARSE1 extract words.
+PARSE skips over any leading spaces
+PARSE1 is used to read strings so doesnt skip leading space. ( Forth strings have a space after the first quote).
+
+If you run this, it expects some input and when you press enter it will return your input spitting out a word(token) 
+per line. It does not handle strings. However from a programmers perspectives its interesting to see the output.
+When you are dont restart the shell or CTRL+C
+
+# --------------------------------------------------------------
+
+class StackUnder(Exception):
+    pass
+
+class RStackUnder(Exception):
+    pass
+
+quitapp=False
+
+r=[] # return
+s=[] # data
+
+d={} # dict
+
+src=''
+inp=''
+
+st=False # state
+
+def drop():
+    global s
+    if s==[]:
+        raise StackUnder
+    else:
+        s.pop()
+
+def dup():
+    global s
+    if s==[]:
+        raise StackUnder
+    else:
+        x=s.pop()
+        s.append(x)
+        s.append(x)
+
+def swap():
+    global s
+    if len(s)<2:
+        raise StackUnder
+    else:
+        x=s.pop()
+        y=s.pop()
+        s.append(x)
+        s.append(y)
+
+def tor():
+    global r,s
+    if s==[]:
+        raise StackUnder
+    else:
+        x=s.pop()
+        r.append(x)
+
+def rfrom():
+    global r,s
+    if r==[]:
+        raise RStackUnder
+    else:
+        x=r.pop()
+        s.append(x)
+
+def dot():
+    global s
+    x=s.pop()
+    print(x)
+    
+def dots():
+    global s
+    print('S:',s)
+    
+def dotr():
+    global r
+    print('R:',r)
+
+def clrr():
+    global r
+    r=[]
+    
+def clrs():
+    global s
+    s=[]
+
+def accept():
+    global src,inp
+    src=input('> ')
+    inp=0
+
+def dpth():
+    global s
+    s.append(len(s))
+
+def rdpth():
+    global r,s
+    s.append(len(r))
+
+
+def eol():
+    global src,inp
+    if len(src)>inp:
+        return False
+    else:
+        return True
+    
+def trail(c):
+    global src,inp
+    while src!='':
+        if src[-1]==c:
+            src=src[:-1]
+        else:
+            break
+    
+def skip(c):
+    global src,inp
+    while eol()==False:
+        if src[inp]==c:
+            inp+=1
+        else:
+            break
+    
+def scan(c):
+    global src,inp
+    while eol()==False:
+        if src[inp]==c:
+            break
+        else:
+            inp+=1    
+    
+def parse(c):
+    global src,inp
+    skip(c)
+    x=inp
+    scan(c)
+    y=inp
+    return src[x:y]    
+    
+def parse1(c):
+    global s,src,inp
+    inp+=1
+    x=inp
+    scan(c)
+    y=inp
+    inp+=1
+    return src[x:y]    
+    
+d={
+    'drop':('py',drop,0),
+    'dup':('py',dup,0),
+    'swap':('py',swap,0),
+    '>r':('py',tor,0),
+    'r>':('py',rfrom,0),
+    '.':('py',dot,0),
+    '.s':('py',dots,0),
+    '.r':('py',dotr,0),
+    'r~':('py',clrr,0),
+    's~':('py',clrs,0),
+    'depth':('py',dpth,0),
+    'rdepth':('py',rdpth,0),
+    }
+    
+def rd():
+    accept()
+    trail(' ')
+    
+def ev():
+    pass
+
+def pr():
+    dots()
+    dotr()
+   
+def repl():
+    global quitapp
+
+    while quitapp==False:
+        rd()
+        while eol()==False:
+            x=parse(' ')
+            print(x)
+        ev()
+        pr()
+    
+def start():
+    global quitapp,st
+
+    quitapp=False
+    st=False
+     
+    clrr() # clear both stacks 
+    clrs()
+
+    print('Forth in Python')
+    print()
+    try:
+        repl()
+    except:
+        print('There was a problem')
+
+start()
+
