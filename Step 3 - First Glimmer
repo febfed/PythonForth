@@ -1,0 +1,351 @@
+Forth operates at 2 levels. It compiles or it executes. This is stored in st ( state ).
+
+Its important to recognise that all the important stuff happend in EV(). Although ev stands 
+for evaluate, try not to think of it like evaluate in lisp.
+
+When you execute a word it computes immediately, on the other hand when you compile it steps 
+through the definition and builds it up in av then copies it to the dictionary. There are 2 
+words IMMEDIATE and POSTPONE that allow you to make forth behave differently as they sidestep 
+the levels. 
+
+Sometimes when you are compiling you might want to interpret. An example is,
+
+IF..ELSE..THEN 
+or BEGIN...UNTIL
+
+These words are marked as different by IMMEDIATE. Result is when you are compiling everytime 
+the compiler sees a work marked IMMEDIATE, it interpret immediately. 
+
+Sometimes when you are interpreting you might want to compile. This is where POSTPONE comes in. 
+It takes the next word on the stream and compiles it, one word at a time. 
+
+It sounds simple but I found this difficult. This is the key to forth. 
+
+The first step is to rewrite EV().
+
+If you run the program something interesting happens...
+
+--If you type say lemons ...
+
+> lemons
+Err: Dont know how to interpret lemons
+S: []
+R: []
+
+-- If you type some numbers
+> 10 20 30
+S: [10, 20, 30]
+R: []
+
+-- WORDS is an important word to remember it will list a list of words available to the programmer. 
+As you can see the stack remains the same  
+
+> words
+['drop', 'dup', 'swap', '>r', 'r>', '.', '.s', '.r', 'r~', 's~', 'depth', 'rdepth', 'bye', 'words']
+14  words found
+S: [10, 20, 30]
+R: []
+> .
+30
+
+-- Finally there's BYE which allows you to leave forth.
+
+It doesnt do much but you can have fun with the stack and explore 
+( -- IS MY COMMENTS TO EXPLAIN... PLEASE IGNORE IF YOU ARE TYPING IT IN )
+-- SOME NUMBERS
+> 4 5 6
+S: [4, 5, 6]
+R: []
+
+-- DEFN of OVER 
+> >r dup r> swap 
+S: [4, 5, 6, 5]
+R: []
+> drop
+S: [4, 5, 6]
+R: []
+
+-- DEFN OF TUCK
+> dup >r swap r>
+S: [4, 6, 5, 6]
+R: []
+
+-- DEFN OF ROT 
+> >r swap r> swap
+S: [6, 5, 4]
+R: []
+
+-- DEFN OF -ROT
+> swap >r swap r>
+S: [4, 6, 5]
+R: []
+
+-- DEFN OF NIP
+> swap drop 
+S: [4, 5]
+R: []
+> 
+
+One final comment, swap and SWAP are different. its case sensitive.
+
+
+# --------------------------------------------------------------
+
+class StackUnder(Exception):
+    pass
+
+class RStackUnder(Exception):
+    pass
+
+quitapp=False
+
+r=[] # return
+s=[] # data
+
+d={} # dict
+
+src=''
+inp=''
+
+st=False # state
+
+def drop():
+    global s
+    if s==[]:
+        raise StackUnder
+    else:
+        s.pop()
+
+def dup():
+    global s
+    if s==[]:
+        raise StackUnder
+    else:
+        x=s.pop()
+        s.append(x)
+        s.append(x)
+
+def swap():
+    global s
+    if len(s)<2:
+        raise StackUnder
+    else:
+        x=s.pop()
+        y=s.pop()
+        s.append(x)
+        s.append(y)
+
+def tor():
+    global r,s
+    if s==[]:
+        raise StackUnder
+    else:
+        x=s.pop()
+        r.append(x)
+
+def rfrom():
+    global r,s
+    if r==[]:
+        raise RStackUnder
+    else:
+        x=r.pop()
+        s.append(x)
+
+def dot():
+    global s
+    x=s.pop()
+    print(x)
+    
+def dots():
+    global s
+    print('S:',s)
+    
+def dotr():
+    global r
+    print('R:',r)
+
+def clrr():
+    global r
+    r=[]
+    
+def clrs():
+    global s
+    s=[]
+
+def accept():
+    global src,inp
+    src=input('> ')
+    inp=0
+
+def dpth():
+    global s
+    s.append(len(s))
+
+def rdpth():
+    global r,s
+    s.append(len(r))
+
+
+def eol():
+    global src,inp
+    if len(src)>inp:
+        return False
+    else:
+        return True
+    
+def trail(c):
+    global src,inp
+    while src!='':
+        if src[-1]==c:
+            src=src[:-1]
+        else:
+            break
+    
+def skip(c):
+    global src,inp
+    while eol()==False:
+        if src[inp]==c:
+            inp+=1
+        else:
+            break
+    
+def scan(c):
+    global src,inp
+    while eol()==False:
+        if src[inp]==c:
+            break
+        else:
+            inp+=1    
+    
+def parse(c):
+    global src,inp
+    skip(c)
+    x=inp
+    scan(c)
+    y=inp
+    return src[x:y]    
+    
+def parse1(c):
+    global s,src,inp
+    inp+=1
+    x=inp
+    scan(c)
+    y=inp
+    inp+=1
+    return src[x:y]    
+
+
+def bye():
+    global quitapp
+    quitapp=True
+
+def words():
+    global d
+    x=list(d.keys())
+    print(x)
+    print(len(x),' words found')
+
+    
+d={
+    'drop':('py',drop,0),
+    'dup':('py',dup,0),
+    'swap':('py',swap,0),
+    '>r':('py',tor,0),
+    'r>':('py',rfrom,0),
+    '.':('py',dot,0),
+    '.s':('py',dots,0),
+    '.r':('py',dotr,0),
+    'r~':('py',clrr,0),
+    's~':('py',clrs,0),
+    'depth':('py',dpth,0),
+    'rdepth':('py',rdpth,0),
+    'bye':('py',bye,0),
+    'words':('py',words,0),
+    }
+    
+def rd():
+    accept()
+    trail(' ')
+
+def find(x):
+    global d
+    if x in list(d.keys()):
+        return True
+    else:
+        return False
+
+def numb(x):
+    global s
+    try:    
+        y=int(x)
+        s.append(y)
+        return True
+    except:
+        return False
+    
+def interp(x):
+    global s,d
+    if find(x)==True:
+        u,v,w=d[x]
+        if u=='py':
+            if w==0:
+                v()
+        elif u=='col':
+            pass
+        elif u=='kon':
+            pass
+        elif u=='var':
+            pass
+        else:
+            pass
+    else:
+        if numb(x)==True:
+            pass
+        else:
+            print('Err: Dont know how to interpret',x)
+
+def compil(x):
+    pass
+
+def ev(x):
+    global st
+    if st==False:
+        interp(x)
+    else:
+        compil(x)
+
+def pr():
+    dots()
+    dotr()
+   
+def repl():
+    global quitapp
+
+    while quitapp==False:
+        rd()
+        while eol()==False:
+            x=parse(' ')
+            ev(x)
+        pr()
+    
+def start():
+    global quitapp,st
+
+    quitapp=False
+    st=False
+     
+    clrr() # clear both stacks 
+    clrs()
+
+    print('Forth in Python')
+    print()
+    try:
+        repl()
+    except:
+        print('There was a problem')
+
+start()
+
+
+
+
