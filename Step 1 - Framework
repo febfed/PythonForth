@@ -1,0 +1,154 @@
+The idea here is nothing complicated. 
+
+If you run this it will expect some input and nothing happens. Type anything until you get bored then CTRL+C to escape.
+
+Forth is a stack language so the most important ops are : dro dup swap >r r> depth and rdepth
+I have also included . .s .r because I like to see
+And r~ s~ are to clear stacks.
+
+# --------------------------------------------------------------
+
+class StackUnder(Exception):
+    pass
+
+class RStackUnder(Exception):
+    pass
+
+quitapp=False
+
+r=[] # return
+s=[] # data
+
+d={} # dict
+
+src=''
+inp=''
+
+st=False # state
+
+def drop():
+    global s
+    if s==[]:
+        raise StackUnder
+    else:
+        s.pop()
+
+def dup():
+    global s
+    if s==[]:
+        raise StackUnder
+    else:
+        x=s.pop()
+        s.append(x)
+        s.append(x)
+
+def swap():
+    global s
+    if len(s)<2:
+        raise StackUnder
+    else:
+        x=s.pop()
+        y=s.pop()
+        s.append(x)
+        s.append(y)
+
+def tor():
+    global r,s
+    if s==[]:
+        raise StackUnder
+    else:
+        x=s.pop()
+        r.append(x)
+
+def rfrom():
+    global r,s
+    if r==[]:
+        raise RStackUnder
+    else:
+        x=r.pop()
+        s.append(x)
+
+def dot():
+    global s
+    x=s.pop()
+    print(x)
+    
+def dots():
+    global s
+    print('S:',s)
+    
+def dotr():
+    global r
+    print('R:',r)
+
+def clrr():
+    global r
+    r=[]
+    
+def clrs():
+    global s
+    s=[]
+
+def accept():
+    global src,inp
+    src=input('> ')
+    inp=0
+
+def dpth():
+    global s
+    s.append(len(s))
+
+def rdpth():
+    global r,s
+    s.append(len(r))
+   
+d={
+    'drop':('py',drop,0),
+    'dup':('py',dup,0),
+    'swap':('py',swap,0),
+    '>r':('py',tor,0),
+    'r>':('py',rfrom,0),
+    '.':('py',dot,0),
+    '.s':('py',dots,0),
+    '.r':('py',dotr,0),
+    'r~':('py',clrr,0),
+    's~':('py',clrs,0),
+    'depth':('py',dpth,0),
+    'rdepth':('py',rdpth,0),
+    }
+    
+def rd():
+    accept()
+    
+def ev():
+    pass
+
+def pr():
+    dots()
+    dotr()
+   
+def repl():
+    global quitapp
+
+    while quitapp==False:
+        rd()
+        ev()
+        pr()
+    
+def start():
+    global quitapp,st
+
+    quitapp=False
+    st=False
+     
+    clrr() # clear both stacks 
+    clrs()
+
+    print('Forth in Python')
+    print()
+    try:
+        repl()
+    except:
+        print('There was a problem')
+
+start()
